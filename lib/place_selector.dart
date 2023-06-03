@@ -11,7 +11,7 @@ class PlaceSelector extends StatefulWidget {
 }
 
 class _PlaceSelectorState extends State<PlaceSelector> {
-  String? _selectedPlace = 'Bodh Gaya';
+  String? _selectedPlace = Prefs.targetName;
   Map<String, Map<String, double>> _placeCoordinates = {
     'Bodh Gaya': {'latitude': 24.6967, 'longitude': 84.9918},
     'Swedagon Pagoda': {'latitude': 16.7983, 'longitude': 96.1498},
