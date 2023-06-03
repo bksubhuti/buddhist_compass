@@ -28,7 +28,7 @@ class _CompassPageState extends State<CompassPage>
   bool _isLoadingLocation = true;
   bool _isChangingLocation = false;
 
-  bool _isWithin2Degrees() {
+  bool _isWithinLimits() {
     return (_bearing - _direction).abs() <= limits;
   }
 
@@ -53,7 +53,8 @@ class _CompassPageState extends State<CompassPage>
         _targetLongitude = Prefs.targetLong;
 
         _direction = event.heading ?? 0.0;
-        _bearing = _calculateBearing(
+        _direction = (_direction < 0) ? _direction + 360 : _direction;
+        _bearing = vasilBearing(
           _userLatitude,
           _userLongitude,
           _targetLatitude,
@@ -72,7 +73,7 @@ class _CompassPageState extends State<CompassPage>
         _distance = newDistance;
       });
 
-      if (_isWithin2Degrees()) {
+      if (_isWithinLimits()) {
         if (_vibrationEnabled) {
           Vibration.vibrate(duration: 50);
         }
@@ -82,6 +83,29 @@ class _CompassPageState extends State<CompassPage>
         }
       }
     });
+  }
+
+  double vasilBearing(double lat1, double lon1, double lat2, double lon2) {
+    final double phi1 = lat1 * math.pi / 180.0;
+    final double phi2 = lat2 * math.pi / 180.0;
+    double deltaLambda = (lon2 - lon1) * math.pi / 180.0;
+    if (deltaLambda.abs() > math.pi) {
+      deltaLambda = deltaLambda > 0
+          ? -(2 * math.pi - deltaLambda)
+          : (2 * math.pi + deltaLambda);
+    }
+
+    final double deltaPhi = math.log(
+        math.tan(phi2 / 2 + math.pi / 4) / math.tan(phi1 / 2 + math.pi / 4));
+
+    final double theta = math.atan2(deltaLambda, deltaPhi);
+
+    double bearing = theta * 180 / math.pi;
+    if (0 <= bearing && bearing < 360) {
+      return bearing;
+    }
+    final double x = bearing, a = 180, p = 360;
+    return (((2 * a * x / p) % p) + p) % p;
   }
 
   double _calculateBearing(
@@ -102,26 +126,6 @@ class _CompassPageState extends State<CompassPage>
 
     return (bearingDeg + 360) % 360;
   }
-
-  /*double _calculateBearing(
-      double startLat, double startLng, double endLat, double endLng) {
-    double startLatRad = vm.radians(startLat);
-    double startLngRad = vm.radians(startLng);
-    double endLatRad = vm.radians(endLat);
-    double endLngRad = vm.radians(endLng);
-
-    double dLng = endLngRad - startLngRad;
-
-    double x = math.cos(startLatRad) * math.sin(dLng);
-    double y = math.sin(endLatRad) * math.cos(startLatRad) -
-        math.cos(endLatRad) * math.sin(startLatRad) * math.cos(dLng);
-
-    double bearingRad = math.atan2(y, x);
-    double bearingDeg = vm.degrees(bearingRad);
-
-    return (bearingDeg + 360) % 360;
-  }
-*/
 
   Future<double> _calculateDistance(
       double startLat, double startLng, double endLat, double endLng) async {
@@ -177,7 +181,7 @@ class _CompassPageState extends State<CompassPage>
           builder: (context, child) {
             return Transform.rotate(
               angle: math.pi * _controller.value * _direction / 180,
-              child: _isWithin2Degrees()
+              child: _isWithinLimits()
                   ? const Icon(
                       Icons.keyboard_double_arrow_up,
                       size: 150,
