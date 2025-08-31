@@ -1,4 +1,4 @@
-package com.example.buddhist_compass
+package com.paauk.buddhistcompass
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:vibration/vibration.dart';
 import 'dart:math' as math;
 //import 'package:vector_math/vector_math.dart' as vm;
+import 'dart:async';
 
 class CompassPage extends StatefulWidget {
   @override
@@ -27,22 +28,71 @@ class _CompassPageState extends State<CompassPage>
   final int limits = 3;
   bool _isLoadingLocation = true;
   bool _isChangingLocation = false;
+  StreamSubscription<Position>? _posSub;
+  bool _wasOnTarget = false;
+  Timer? _pulseTimer;
+  DateTime? _lastVibeAt;
+  final _minVibeGap = const Duration(milliseconds: 300);
+
+  double _angDiff(double a, double b) {
+    final d = (a - b) % 360;
+    return (d + 540) % 360 - 180; // now in range [-180,180)
+  }
 
   bool _isWithinLimits() {
-    return (_bearing - _direction).abs() <= limits;
+    return _angDiff(_bearing, _direction).abs() <= limits;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    precacheImage(
+        const AssetImage('assets/images/compass_normal.png'), context);
+    precacheImage(
+        const AssetImage('assets/images/compass_on_target.png'), context);
   }
 
   Future<void> _getLocation() async {
-    PermissionStatus permissionStatus = await Permission.location.request();
+    // Ask for location permission
+    final permissionStatus = await Permission.location.request();
+
     if (permissionStatus.isGranted) {
-      Position position = await Geolocator.getCurrentPosition();
-      setState(() {
-        _userLatitude = position.latitude;
-        _userLongitude = position.longitude;
-        _isLoadingLocation = false;
-      });
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high, // was desiredAccuracy
+            distanceFilter: 0, // report immediately
+          ),
+        );
+
+        setState(() {
+          _userLatitude = position.latitude;
+          _userLongitude = position.longitude;
+          _isLoadingLocation = false;
+        });
+      } catch (e) {
+        // Handle errors like GPS not enabled
+        debugPrint("Error getting location: $e");
+      }
+    } else if (permissionStatus.isDenied) {
+      // User denied once
+      debugPrint("Location permission denied.");
+    } else if (permissionStatus.isPermanentlyDenied) {
+      // User selected "Don't ask again" → open app settings
+      await openAppSettings();
+    }
+  }
+
+  Future<void> _ensureLocationPermissionAndStart() async {
+    final status = await Permission.location.request();
+    if (status.isGranted || status.isLimited) {
+      _startLocationStream(); //  start stream after permission
+    } else if (status.isPermanentlyDenied) {
+      await openAppSettings();
+      setState(
+          () => _isLoadingLocation = false); //  let UI show even without GPS
     } else {
-      // Handle permission denied or restricted case
+      setState(() => _isLoadingLocation = false); //  show UI; bearing may be 0
     }
   }
 
@@ -54,7 +104,7 @@ class _CompassPageState extends State<CompassPage>
 
         _direction = event.heading ?? 0.0;
         _direction = (_direction < 0) ? _direction + 360 : _direction;
-        _bearing = vasilBearing(
+        _bearing = _calculateBearing(
           _userLatitude,
           _userLongitude,
           _targetLatitude,
@@ -73,16 +123,43 @@ class _CompassPageState extends State<CompassPage>
         _distance = newDistance;
       });
 
-      if (_isWithinLimits()) {
+      final onTarget = _isWithinLimits();
+
+      if (onTarget != _wasOnTarget) {
+        _wasOnTarget = onTarget;
+
         if (_vibrationEnabled) {
-          Vibration.vibrate(duration: 50);
-        }
-      } else {
-        if (_vibrationEnabled) {
-          Vibration.vibrate(duration: 200);
+          await Vibration.cancel();
+          if (onTarget) {
+            // start repeating pulse every 2 seconds
+            _pulseTimer?.cancel();
+            _pulseTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
+              if (await _canVibrate()) Vibration.vibrate(duration: 100);
+            });
+          } else {
+            // stop pulsing and buzz once long
+            _pulseTimer?.cancel();
+            _pulseTimer = null;
+            if (await _canVibrate()) Vibration.vibrate(duration: 250);
+          }
+        } else {
+          //  vibration disabled: ensure nothing is running
+          _pulseTimer?.cancel();
+          _pulseTimer = null;
+          await Vibration.cancel();
         }
       }
     });
+  }
+
+  Future<bool> _canVibrate() async {
+    if (!_vibrationEnabled) return false;
+    if (!(await Vibration.hasVibrator() ?? false)) return false;
+    final now = DateTime.now();
+    if (_lastVibeAt != null && now.difference(_lastVibeAt!) < _minVibeGap)
+      return false;
+    _lastVibeAt = now;
+    return true;
   }
 
   double vasilBearing(double lat1, double lon1, double lat2, double lon2) {
@@ -210,52 +287,64 @@ class _CompassPageState extends State<CompassPage>
       duration: const Duration(milliseconds: 200),
     );
     _startCompass();
-    _getLocation();
+//    _getLocation();
+    _ensureLocationPermissionAndStart();
   }
 
   @override
   void dispose() {
+    Vibration.cancel();
+    _pulseTimer?.cancel();
+    _posSub?.cancel();
     _controller.dispose();
     super.dispose();
+  }
+
+  void _startLocationStream() {
+    _posSub?.cancel(); // cancel old if any
+    _posSub = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 3, // meters before update
+      ),
+    ).listen((pos) {
+      setState(() {
+        _userLatitude = pos.latitude;
+        _userLongitude = pos.longitude;
+        _isLoadingLocation = false;
+      });
+    });
   }
 
   Widget _buildCompass() {
     return Stack(
       alignment: Alignment.center,
       children: [
-        Transform.rotate(
-          angle: -math.pi * _direction / 180,
-          child: Image.asset(
-            'assets/images/compass_cc0.png',
-            width: 280,
-            height: 280,
+        //  AnimatedSwitcher for a nice cross-fade when entering/leaving target
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          switchInCurve: Curves.easeInOut,
+          switchOutCurve: Curves.easeInOut,
+          child: Transform.rotate(
+            key: ValueKey<bool>(_isWithinLimits()),
+            angle: -math.pi * _direction / 180,
+            child: Image.asset(
+              _isWithinLimits()
+                  ? 'assets/images/compass_on_target.png'
+                  : 'assets/images/compass_normal.png',
+              width: 280,
+              height: 280,
+            ),
           ),
         ),
+
+        // (Optional) keep/remove this label — not an arrow
         const Positioned(
           top: 0,
           child: Text(
             'I',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
-        ),
-        AnimatedBuilder(
-          animation: _controller,
-          builder: (context, child) {
-            return Transform.rotate(
-              angle: math.pi * _controller.value * _direction / 180,
-              child: _isWithinLimits()
-                  ? const Icon(
-                      Icons.keyboard_double_arrow_up,
-                      size: 150,
-                      color: Colors.green,
-                    )
-                  : const Icon(
-                      Icons.keyboard_double_arrow_up,
-                      size: 150,
-                      color: Color.fromARGB(255, 61, 13, 9),
-                    ),
-            );
-          },
         ),
       ],
     );
@@ -271,73 +360,80 @@ class _CompassPageState extends State<CompassPage>
       appBar: AppBar(
         title: const Text('Buddhist Compass App'),
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              (_isLoadingLocation || _isChangingLocation)
-                  ? _buildLoadingIndicator()
-                  : _buildCompass(),
-              const SizedBox(height: 10),
-              const Text(
-                'Current Direction:',
-                style: TextStyle(fontSize: 14),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                '${_direction.toInt()}°',
-                style:
-                    const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Bearing to ${Prefs.targetName}:',
-                style: const TextStyle(fontSize: 14),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                '${_bearing.toInt()}°',
-                style:
-                    const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Distance to ${Prefs.targetName}:',
-                style: const TextStyle(fontSize: 14),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                '${_distance.toInt()} km',
-                style:
-                    const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-              PlaceSelector(
-                onLocationChanged: () {
-                  setState(() {
-                    _isChangingLocation = true;
-                  });
-                  _getLocation().then((_) {
+      body: SingleChildScrollView(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                (_isLoadingLocation || _isChangingLocation)
+                    ? _buildLoadingIndicator()
+                    : _buildCompass(),
+                const SizedBox(height: 10),
+                const Text(
+                  'Current Direction:',
+                  style: TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  '${_direction.toInt()}°',
+                  style: const TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 15),
+                Text(
+                  'Bearing to ${Prefs.targetName}:',
+                  style: const TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  '${_bearing.toInt()}°',
+                  style: const TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 15),
+                Text(
+                  'Distance to ${Prefs.targetName}:',
+                  style: const TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  '${_distance.toInt()} km',
+                  style: const TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 15),
+                PlaceSelector(
+                  onLocationChanged: () {
                     setState(() {
-                      _isChangingLocation = false;
+                      _isChangingLocation = true;
                     });
-                  });
-                },
-              ),
-              const SizedBox(height: 20),
-              const Text('Vibration'),
-              Switch(
-                value: _vibrationEnabled,
-                onChanged: (value) {
-                  setState(() {
-                    _vibrationEnabled = value;
-                  });
-                },
-              ),
-            ],
+                    _getLocation().then((_) {
+                      setState(() {
+                        _isChangingLocation = false;
+                      });
+                    });
+                  },
+                ),
+                const SizedBox(height: 15),
+                const Text('Vibration'),
+                Switch(
+                  value: _vibrationEnabled,
+                  onChanged: (value) async {
+                    setState(() {
+                      _vibrationEnabled = value;
+                    });
+                    if (!value) {
+                      _pulseTimer?.cancel();
+                      _pulseTimer = null;
+                      await Vibration.cancel();
+                    }
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

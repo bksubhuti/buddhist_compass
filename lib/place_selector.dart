@@ -15,7 +15,7 @@ class _PlaceSelectorState extends State<PlaceSelector> {
   Map<String, Map<String, double>> _placeCoordinates = {
     'Bodh Gaya': {'latitude': 24.6967, 'longitude': 84.9918},
     'Swedagon Pagoda': {'latitude': 16.7983, 'longitude': 96.1498},
-    'Maha Cetiya': {'latitude': 7.2938, 'longitude': 81.8644},
+    'Maha Cetiya': {'latitude': 8.3499986, 'longitude': 80.391165102},
   };
 
   void _onPlaceSelected(String? value) {
