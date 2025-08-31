@@ -282,6 +282,7 @@ class _CompassPageState extends State<CompassPage>
   @override
   void initState() {
     super.initState();
+    _vibrationEnabled = Prefs.vibeOn;
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
@@ -424,6 +425,7 @@ class _CompassPageState extends State<CompassPage>
                   onChanged: (value) async {
                     setState(() {
                       _vibrationEnabled = value;
+                      Prefs.vibeOn = value;
                     });
                     if (!value) {
                       _pulseTimer?.cancel();

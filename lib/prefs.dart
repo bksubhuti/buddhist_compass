@@ -9,10 +9,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 const String targetNamePref = "targetName";
 const String targetLatPref = "targetLat";
 const String targetLongPref = "targetLong";
+const String vibeOnPref = 'vibeOn';
 
 const String defaultTargetName = "Bodh Gaya";
 const double defaultTargetLat = 24.6962;
 const double defaultTargetLong = 84.9901;
+const bool defaultVibeOn = false;
 
 class Prefs {
   // prevent object creation
@@ -36,6 +38,9 @@ class Prefs {
       instance.getDouble(targetLongPref) ?? defaultTargetLong;
   static set targetLong(double value) =>
       instance.setDouble(targetLongPref, value);
+
+  static bool get vibeOn => instance.getBool(vibeOnPref) ?? defaultVibeOn;
+  static set vibeOn(bool value) => instance.setBool(vibeOnPref, value);
 
   // ===========================================================================
   // Helpers
