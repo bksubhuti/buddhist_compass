@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
+            VALUE "CompanyName", "org.americanmonk" "\0"
             VALUE "FileDescription", "buddhist_compass" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "buddhist_compass" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2023 com.example. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2023 org.americanmonk. All rights reserved." "\0"
             VALUE "OriginalFilename", "buddhist_compass.exe" "\0"
             VALUE "ProductName", "buddhist_compass" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

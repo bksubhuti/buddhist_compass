@@ -288,7 +288,6 @@ class _CompassPageState extends State<CompassPage>
       duration: const Duration(milliseconds: 200),
     );
     _startCompass();
-//    _getLocation();
     _ensureLocationPermissionAndStart();
   }
 
