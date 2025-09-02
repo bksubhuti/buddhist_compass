@@ -3,9 +3,13 @@ import 'package:buddhist_compass/prefs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:in_app_review/in_app_review.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:vibration/vibration.dart';
 import 'dart:math' as math;
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 //import 'package:vector_math/vector_math.dart' as vm;
 import 'dart:async';
 
@@ -360,6 +364,71 @@ class _CompassPageState extends State<CompassPage>
       appBar: AppBar(
         title: const Text('Buddhist Compass App'),
       ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: const BoxDecoration(color: Colors.blue),
+              child: Column(
+                children: [
+                  Image.asset(
+                    'assets/images/compass_on_target.png',
+                    height: 80,
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    "Buddhist Compass",
+                    style: TextStyle(color: Colors.white, fontSize: 18),
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.help),
+              title: Text("Help", style: TextStyle()),
+              onTap: () {
+                showHelpDialog(context);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.info),
+              title: Text("About", style: TextStyle()),
+              onTap: () {
+                showAboutBuddhistCompassDialog(context);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.info),
+              title: Text("Privacy Policy"),
+              onTap: () async {
+                const url =
+                    'https://americanmonk.org/privacy-policy-for-buddhist-compass-app/';
+                final uri = Uri.parse(url);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } else {
+                  // Optional: show an error if the URL cannot be opened
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Could not launch Privacy Policy')),
+                  );
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.star), // Added Icon
+              title: Text("Rate This App", style: TextStyle()),
+              focusColor: Theme.of(context).focusColor,
+              hoverColor: Theme.of(context).hoverColor,
+              onTap: () async {
+                await InAppReview.instance.openStoreListing(
+                  appStoreId: '6751797857', // use after iOS is live
+                );
+              },
+            ),
+          ],
+        ),
+      ),
       body: SingleChildScrollView(
         child: Center(
           child: Padding(
@@ -438,6 +507,94 @@ class _CompassPageState extends State<CompassPage>
           ),
         ),
       ),
+    );
+  }
+
+  showHelpDialog(BuildContext context) {
+    // set up the button
+    Widget okButton = TextButton(
+      child: Text("OK", style: TextStyle()),
+      onPressed: () {
+        Navigator.pop(context);
+      },
+    );
+
+    // set up the AlertDialog
+    AlertDialog help = AlertDialog(
+      title: Text("Help"),
+      content: SingleChildScrollView(
+        child: Text(
+          "1. When the app first starts, it will ask permission to use your location. Allow access.\n\n"
+          "2. Select the Buddhist site you wish to face (default is Bodh Gaya, India). Wait a few seconds for it to register.\n\n"
+          "3. Hold your phone parallel to the ground and slowly turn until the compass aligns with your chosen site.\n\n"
+          "4. When you are facing the right direction, the compass becomes bright.\n\n"
+          "5. Pray in that direction.\n\n"
+          "6. Optionally, enable vibration mode for haptic feedback.",
+          style: TextStyle(
+            fontSize: 16,
+          ),
+        ),
+      ),
+      actions: [
+        okButton,
+      ],
+    );
+
+    // show the dialog
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return help;
+      },
+    );
+  }
+
+  showAboutBuddhistCompassDialog(BuildContext context) async {
+    final info = await PackageInfo.fromPlatform();
+    showAboutDialog(
+      context: context,
+      applicationIcon: Image.asset(
+        'assets/images/compass_on_target.png',
+        width: 50,
+        height: 50,
+      ),
+      applicationName: "Buddhist Compass",
+      applicationVersion: 'Version ${info.version}+${info.buildNumber}',
+      children: [
+        const SizedBox(height: 12),
+        const Text(
+          "Buddhist Compass helps you align yourself with Bodh Gaya, "
+          "the place of the Buddha’s Enlightenment, or other sacred sites. "
+          "By facing these holy directions, your prayers and worship "
+          "can feel more powerful and connected.",
+          style: TextStyle(fontSize: 15),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          "The idea for this app came while traveling in Thailand, inspired "
+          "by the way Muslims face Mecca in their daily prayers. Now, Buddhists "
+          "too can easily find the direction of Bodh Gaya or other locations "
+          "with a simple compass tool.",
+          style: TextStyle(fontSize: 15),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          "How to Use:\n"
+          "• Allow location permission when prompted.\n"
+          "• Select Bodh Gaya or another Buddhist site.\n"
+          "• Hold your phone flat and rotate until the compass aligns.\n"
+          "• The compass will brighten when you face the right direction.\n"
+          "• Pray in that direction.\n"
+          "• Optional: enable vibration for haptic feedback.",
+          style: TextStyle(fontSize: 15),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          "We do not collect or store your personal location data. "
+          "Only anonymous statistics provided by the app stores are used.",
+          style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+        ),
+      ],
     );
   }
 }
