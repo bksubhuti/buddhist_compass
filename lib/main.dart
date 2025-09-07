@@ -6,7 +6,7 @@ import 'package:buddhist_compass/l10n/app_localizations.dart'; // flutter gen-l1
 import 'package:buddhist_compass/src/provider/locale_change_notifier.dart'; // make sure this exists
 import 'package:flutter_localizations/flutter_localizations.dart';
 
-import 'compass_page.dart';
+import 'views/compass_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

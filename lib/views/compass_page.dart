@@ -581,8 +581,7 @@ class _CompassPageState extends State<CompassPage>
                 }
               },
             ),
-
-            /*            ListTile(
+            ListTile(
               leading: const Icon(Icons.star), // Added Icon
               title: Text("Rate This App", style: TextStyle()),
               focusColor: Theme.of(context).focusColor,
@@ -593,7 +592,6 @@ class _CompassPageState extends State<CompassPage>
                 );
               },
             ),
-      */
             ListTile(
               leading: const Icon(Icons.share),
               title: Text(AppLocalizations.of(context)!.shareApp),
