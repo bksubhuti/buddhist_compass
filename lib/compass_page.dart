@@ -1,19 +1,24 @@
+import 'package:buddhist_compass/l10n/app_localizations.dart';
 import 'package:buddhist_compass/place_selector.dart';
 import 'package:buddhist_compass/prefs.dart';
+import 'package:buddhist_compass/views/settings_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:in_app_review/in_app_review.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:vibration/vibration.dart';
 import 'dart:math' as math;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:flutter/services.dart' show SystemNavigator;
 
 //import 'package:vector_math/vector_math.dart' as vm;
 import 'dart:async';
 
 class CompassPage extends StatefulWidget {
+  const CompassPage({super.key});
+
   @override
   _CompassPageState createState() => _CompassPageState();
 }
@@ -37,6 +42,23 @@ class _CompassPageState extends State<CompassPage>
   Timer? _pulseTimer;
   DateTime? _lastVibeAt;
   final _minVibeGap = const Duration(milliseconds: 300);
+  bool _askedThisSession = false; // prevents repeat prompts
+  bool _showingDialog = false; // avoids stacking dialogs
+
+  String _targetDisplayName(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    switch (Prefs.targetName) {
+      // Prefs.targetName should store the ID
+      case 'bodhGaya':
+        return t.place_bodhGaya;
+      case 'shwedagonPagoda':
+        return t.place_shwedagonPagoda;
+      case 'mahaCetiya':
+        return t.place_mahaCetiya;
+      default:
+        return t.place_bodhGaya; // fallback
+    }
+  }
 
   double _angDiff(double a, double b) {
     final d = (a - b) % 360;
@@ -56,48 +78,163 @@ class _CompassPageState extends State<CompassPage>
         const AssetImage('assets/images/compass_on_target.png'), context);
   }
 
-  Future<void> _getLocation() async {
-    // Ask for location permission
-    final permissionStatus = await Permission.location.request();
+  Future<void> _getLocation(BuildContext context) async {
+    final ok = await _ensureLocationPermissionWithPrompt(context);
+    if (!ok) return;
 
-    if (permissionStatus.isGranted) {
-      try {
-        final position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high, // was desiredAccuracy
-            distanceFilter: 0, // report immediately
-          ),
-        );
+    final servicesOn = await Geolocator.isLocationServiceEnabled();
+    if (!servicesOn) {
+      _promptOpenLocationServices(context);
+      return;
+    }
 
-        setState(() {
-          _userLatitude = position.latitude;
-          _userLongitude = position.longitude;
-          _isLoadingLocation = false;
-        });
-      } catch (e) {
-        // Handle errors like GPS not enabled
-        debugPrint("Error getting location: $e");
-      }
-    } else if (permissionStatus.isDenied) {
-      // User denied once
-      debugPrint("Location permission denied.");
-    } else if (permissionStatus.isPermanentlyDenied) {
-      // User selected "Don't ask again" → open app settings
-      await openAppSettings();
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high, distanceFilter: 0),
+      );
+      setState(() {
+        _userLatitude = position.latitude;
+        _userLongitude = position.longitude;
+        _isLoadingLocation = false;
+      });
+    } catch (e) {
+      debugPrint("Error getting location: $e");
+      _showSnack(context, AppLocalizations.of(context)!.locationError);
     }
   }
 
-  Future<void> _ensureLocationPermissionAndStart() async {
-    final status = await Permission.location.request();
-    if (status.isGranted || status.isLimited) {
-      _startLocationStream(); //  start stream after permission
-    } else if (status.isPermanentlyDenied) {
-      await openAppSettings();
-      setState(
-          () => _isLoadingLocation = false); //  let UI show even without GPS
-    } else {
-      setState(() => _isLoadingLocation = false); //  show UI; bearing may be 0
+  void _promptOpenLocationServices(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(AppLocalizations.of(context)!.locationServicesTitle),
+        content: Text(
+          AppLocalizations.of(context)!.locationServicesContent,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Not now'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await Geolocator.openLocationSettings(); // user-initiated only
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSnack(BuildContext context, String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  Future<bool> _ensureLocationPermissionWithPrompt(BuildContext context) async {
+    // Avoid loops: only ask once per visible session (you can reset as needed)
+    if (_askedThisSession) return await _hasLocationPermission();
+    _askedThisSession = true;
+
+    // Already granted?
+    if (await _hasLocationPermission()) return true;
+
+    // Rationale dialog (user-friendly explanation before the system sheet)
+    final proceed = await _showRationaleDialog(context);
+    if (proceed != true) return false;
+
+    // Request permission
+    LocationPermission permission = await Geolocator.requestPermission();
+
+    if (permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse) {
+      return true;
     }
+
+    if (permission == LocationPermission.denied) {
+      // User denied at system sheet — offer Settings or Exit
+      await _showSettingsOrExitDialog(context,
+          message: AppLocalizations.of(context)!.locationRequiredMessage1);
+      return false;
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      // Permanently denied — Settings or Exit
+      await _showSettingsOrExitDialog(context,
+          message: AppLocalizations.of(context)!.locationRequiredMessage2);
+      return false;
+    }
+
+    return false;
+  }
+
+  Future<bool> _hasLocationPermission() async {
+    final p = await Geolocator.checkPermission();
+    return p == LocationPermission.always || p == LocationPermission.whileInUse;
+  }
+
+  Future<bool?> _showRationaleDialog(BuildContext context) async {
+    if (_showingDialog) return false;
+    _showingDialog = true;
+    final res = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Allow Location?'),
+        content: Text(
+          AppLocalizations.of(context)!.locationPermissionRationaleMessage,
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text((AppLocalizations.of(context)!
+                  .locationPermissionRationaleNotNow))),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(AppLocalizations.of(context)!
+                  .locationPermissionRationaleContinue)),
+        ],
+      ),
+    );
+    _showingDialog = false;
+    return res;
+  }
+
+  Future<void> _showSettingsOrExitDialog(BuildContext context,
+      {required String message}) async {
+    if (_showingDialog) return;
+    _showingDialog = true;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(AppLocalizations.of(context)!.locationRequiredTitle),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), // stay in app
+            child: Text(AppLocalizations.of(context)!.locationRequiredCancel),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await Geolocator.openAppSettings(); // user-initiated only
+            },
+            child: Text(
+                AppLocalizations.of(context)!.locationRequiredOpenSettings),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Exit: works on Android; iOS discourages programmatic exit.
+              SystemNavigator.pop();
+            },
+            child: Text(AppLocalizations.of(context)!.locationRequiredExit),
+          ),
+        ],
+      ),
+    );
+    _showingDialog = false;
   }
 
   void _startCompass() {
@@ -158,7 +295,7 @@ class _CompassPageState extends State<CompassPage>
 
   Future<bool> _canVibrate() async {
     if (!_vibrationEnabled) return false;
-    if (!(await Vibration.hasVibrator() ?? false)) return false;
+    if (!(await Vibration.hasVibrator())) return false;
     final now = DateTime.now();
     if (_lastVibeAt != null && now.difference(_lastVibeAt!) < _minVibeGap)
       return false;
@@ -209,7 +346,9 @@ class _CompassPageState extends State<CompassPage>
   }
 
   double vincentyBearing(double lat1, double lon1, double lat2, double lon2) {
-    const double a = 6378137, b = 6356752.314245, f = 1 / 298.257223563;
+//    const double a = 6378137;
+    //  const double b = 6356752.314245;
+    const double f = 1 / 298.257223563;
     double L = toRadians(lon2 - lon1);
 
     double U1 = math.atan((1 - f) * math.tan(toRadians(lat1)));
@@ -288,11 +427,20 @@ class _CompassPageState extends State<CompassPage>
     super.initState();
     _vibrationEnabled = Prefs.vibeOn;
     _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 200),
-    );
+        vsync: this, duration: const Duration(milliseconds: 200));
     _startCompass();
-    _ensureLocationPermissionAndStart();
+
+    // Ask once on load; don’t loop
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final ok = await _ensureLocationPermissionWithPrompt(context);
+      if (ok) {
+        final servicesOn = await Geolocator.isLocationServiceEnabled();
+        if (servicesOn) {
+          _startLocationStream();
+        }
+      }
+      setState(() => _isLoadingLocation = false);
+    });
   }
 
   @override
@@ -360,9 +508,13 @@ class _CompassPageState extends State<CompassPage>
 
   @override
   Widget build(BuildContext context) {
+    final topInset = MediaQuery.of(context).viewPadding.top;
     return Scaffold(
+      extendBodyBehindAppBar: false,
       appBar: AppBar(
-        title: const Text('Buddhist Compass App'),
+        centerTitle: true,
+        toolbarHeight: kToolbarHeight + topInset,
+        title: Text(AppLocalizations.of(context)!.appTitle),
       ),
       drawer: Drawer(
         child: ListView(
@@ -377,30 +529,42 @@ class _CompassPageState extends State<CompassPage>
                     height: 80,
                   ),
                   const SizedBox(height: 10),
-                  const Text(
-                    "Buddhist Compass",
+                  Text(
+                    AppLocalizations.of(context)!.drawerHeaderTitle,
                     style: TextStyle(color: Colors.white, fontSize: 18),
                   ),
                 ],
               ),
             ),
             ListTile(
+              leading: const Icon(Icons.settings),
+              title: Text(AppLocalizations.of(context)!.settings),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SettingsPage()),
+                );
+              },
+            ),
+            ListTile(
               leading: Icon(Icons.help),
-              title: Text("Help", style: TextStyle()),
+              title:
+                  Text(AppLocalizations.of(context)!.help, style: TextStyle()),
               onTap: () {
                 showHelpDialog(context);
               },
             ),
             ListTile(
               leading: Icon(Icons.info),
-              title: Text("About", style: TextStyle()),
+              title:
+                  Text(AppLocalizations.of(context)!.about, style: TextStyle()),
               onTap: () {
                 showAboutBuddhistCompassDialog(context);
               },
             ),
             ListTile(
               leading: Icon(Icons.info),
-              title: Text("Privacy Policy"),
+              title: Text(AppLocalizations.of(context)!.privacyPolicy),
               onTap: () async {
                 const url =
                     'https://americanmonk.org/privacy-policy-for-buddhist-compass-app/';
@@ -410,12 +574,15 @@ class _CompassPageState extends State<CompassPage>
                 } else {
                   // Optional: show an error if the URL cannot be opened
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Could not launch Privacy Policy')),
+                    SnackBar(
+                        content: Text(
+                            AppLocalizations.of(context)!.privacyPolicyError)),
                   );
                 }
               },
             ),
-            ListTile(
+
+            /*            ListTile(
               leading: const Icon(Icons.star), // Added Icon
               title: Text("Rate This App", style: TextStyle()),
               focusColor: Theme.of(context).focusColor,
@@ -426,83 +593,98 @@ class _CompassPageState extends State<CompassPage>
                 );
               },
             ),
+      */
+            ListTile(
+              leading: const Icon(Icons.share),
+              title: Text(AppLocalizations.of(context)!.shareApp),
+              onTap: () {
+                Navigator.pop(context); // close the drawer
+                shareApp(context);
+              },
+            ),
           ],
         ),
       ),
       body: SingleChildScrollView(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                (_isLoadingLocation || _isChangingLocation)
-                    ? _buildLoadingIndicator()
-                    : _buildCompass(),
-                const SizedBox(height: 10),
-                const Text(
-                  'Current Direction:',
-                  style: TextStyle(fontSize: 14),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  '${_direction.toInt()}°',
-                  style: const TextStyle(
-                      fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 15),
-                Text(
-                  'Bearing to ${Prefs.targetName}:',
-                  style: const TextStyle(fontSize: 14),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  '${_bearing.toInt()}°',
-                  style: const TextStyle(
-                      fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 15),
-                Text(
-                  'Distance to ${Prefs.targetName}:',
-                  style: const TextStyle(fontSize: 14),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  '${_distance.toInt()} km',
-                  style: const TextStyle(
-                      fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 15),
-                PlaceSelector(
-                  onLocationChanged: () {
-                    setState(() {
-                      _isChangingLocation = true;
-                    });
-                    _getLocation().then((_) {
+        child: SafeArea(
+          top: true,
+          bottom: false,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  (_isLoadingLocation || _isChangingLocation)
+                      ? _buildLoadingIndicator()
+                      : _buildCompass(),
+                  const SizedBox(height: 10),
+                  Text(
+                    AppLocalizations.of(context)!.currentDirection,
+                    style: TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '${_direction.toInt()}°',
+                    style: const TextStyle(
+                        fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 15),
+                  Text(
+                    AppLocalizations.of(context)!
+                        .bearingTo(_targetDisplayName(context)),
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '${_bearing.toInt()}°',
+                    style: const TextStyle(
+                        fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 15),
+                  Text(
+                    AppLocalizations.of(context)!
+                        .distanceTo(_targetDisplayName(context)),
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '${_distance.toInt()} km',
+                    style: const TextStyle(
+                        fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 15),
+                  PlaceSelector(
+                    onLocationChanged: () {
                       setState(() {
-                        _isChangingLocation = false;
+                        _isChangingLocation = true;
                       });
-                    });
-                  },
-                ),
-                const SizedBox(height: 15),
-                const Text('Vibration'),
-                Switch(
-                  value: _vibrationEnabled,
-                  onChanged: (value) async {
-                    setState(() {
-                      _vibrationEnabled = value;
-                      Prefs.vibeOn = value;
-                    });
-                    if (!value) {
-                      _pulseTimer?.cancel();
-                      _pulseTimer = null;
-                      await Vibration.cancel();
-                    }
-                  },
-                ),
-              ],
+                      _getLocation(context).then((_) {
+                        setState(() {
+                          _isChangingLocation = false;
+                        });
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 15),
+                  Text(AppLocalizations.of(context)!.vibration),
+                  Switch(
+                    value: _vibrationEnabled,
+                    onChanged: (value) async {
+                      setState(() {
+                        _vibrationEnabled = value;
+                        Prefs.vibeOn = value;
+                      });
+                      if (!value) {
+                        _pulseTimer?.cancel();
+                        _pulseTimer = null;
+                        await Vibration.cancel();
+                      }
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -513,7 +695,8 @@ class _CompassPageState extends State<CompassPage>
   showHelpDialog(BuildContext context) {
     // set up the button
     Widget okButton = TextButton(
-      child: Text("OK", style: TextStyle()),
+      child:
+          Text(AppLocalizations.of(context)!.helpDialogOk, style: TextStyle()),
       onPressed: () {
         Navigator.pop(context);
       },
@@ -524,12 +707,7 @@ class _CompassPageState extends State<CompassPage>
       title: Text("Help"),
       content: SingleChildScrollView(
         child: Text(
-          "1. When the app first starts, it will ask permission to use your location. Allow access.\n\n"
-          "2. Select the Buddhist site you wish to face (default is Bodh Gaya, India). Wait a few seconds for it to register.\n\n"
-          "3. Hold your phone parallel to the ground and slowly turn until the compass aligns with your chosen site.\n\n"
-          "4. When you are facing the right direction, the compass becomes bright.\n\n"
-          "5. Pray in that direction.\n\n"
-          "6. Optionally, enable vibration mode for haptic feedback.",
+          AppLocalizations.of(context)!.helpDialogContent,
           style: TextStyle(
             fontSize: 16,
           ),
@@ -562,39 +740,41 @@ class _CompassPageState extends State<CompassPage>
       applicationVersion: 'Version ${info.version}+${info.buildNumber}',
       children: [
         const SizedBox(height: 12),
-        const Text(
-          "Buddhist Compass helps you align yourself with Bodh Gaya, "
-          "the place of the Buddha’s Enlightenment, or other sacred sites. "
-          "By facing these holy directions, your prayers and worship "
-          "can feel more powerful and connected.",
+        Text(
+          AppLocalizations.of(context)!.aboutDialogParagraph1,
           style: TextStyle(fontSize: 15),
         ),
         const SizedBox(height: 12),
-        const Text(
-          "The idea for this app came while traveling in Thailand, inspired "
-          "by the way Muslims face Mecca in their daily prayers. Now, Buddhists "
-          "too can easily find the direction of Bodh Gaya or other locations "
-          "with a simple compass tool.",
+        Text(
+          AppLocalizations.of(context)!.aboutDialogParagraph2,
           style: TextStyle(fontSize: 15),
         ),
         const SizedBox(height: 12),
-        const Text(
-          "How to Use:\n"
-          "• Allow location permission when prompted.\n"
-          "• Select Bodh Gaya or another Buddhist site.\n"
-          "• Hold your phone flat and rotate until the compass aligns.\n"
-          "• The compass will brighten when you face the right direction.\n"
-          "• Pray in that direction.\n"
-          "• Optional: enable vibration for haptic feedback.",
+        Text(
+          AppLocalizations.of(context)!.locationPermissionRationaleTitle,
           style: TextStyle(fontSize: 15),
         ),
         const SizedBox(height: 12),
-        const Text(
-          "We do not collect or store your personal location data. "
-          "Only anonymous statistics provided by the app stores are used.",
+        Text(
+          AppLocalizations.of(context)!.aboutDialogParagraph4,
           style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
         ),
       ],
+    );
+  }
+
+  Future<void> shareApp(BuildContext context) async {
+    final box = context.findRenderObject() as RenderBox?;
+    const landingUrl =
+        'https://americanmonk.org/apps/buddhist-compass/?utm_source=app&utm_medium=share';
+
+    await SharePlus.instance.share(
+      ShareParams(
+        text: AppLocalizations.of(context)!.shareAppText,
+        subject: 'Buddhist Compass',
+        sharePositionOrigin: box!.localToGlobal(Offset.zero) & (box.size),
+        title: AppLocalizations.of(context)!.shareAppTitle,
+      ),
     );
   }
 }

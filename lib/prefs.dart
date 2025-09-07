@@ -16,6 +16,9 @@ const double defaultTargetLat = 24.6962;
 const double defaultTargetLong = 84.9901;
 const bool defaultVibeOn = false;
 
+const String LOCALEVAL = "localeVal";
+const int DEFAULT_LOCALEVAL = 0;
+
 class Prefs {
   // prevent object creation
   Prefs._();
@@ -41,6 +44,9 @@ class Prefs {
 
   static bool get vibeOn => instance.getBool(vibeOnPref) ?? defaultVibeOn;
   static set vibeOn(bool value) => instance.setBool(vibeOnPref, value);
+
+  static int get localeVal => instance.getInt(LOCALEVAL) ?? DEFAULT_LOCALEVAL;
+  static set localeVal(int value) => instance.setInt(LOCALEVAL, value);
 
   // ===========================================================================
   // Helpers
