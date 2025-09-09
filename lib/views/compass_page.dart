@@ -508,180 +508,191 @@ class _CompassPageState extends State<CompassPage>
 
   @override
   Widget build(BuildContext context) {
-    final topInset = MediaQuery.of(context).viewPadding.top;
-    return Scaffold(
-      extendBodyBehindAppBar: false,
-      appBar: AppBar(
-        centerTitle: true,
-        toolbarHeight: kToolbarHeight + topInset,
-        title: Text(AppLocalizations.of(context)!.appTitle),
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(color: Colors.blue),
-              child: Column(
-                children: [
-                  Image.asset(
-                    'assets/images/compass_on_target.png',
-                    height: 80,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    AppLocalizations.of(context)!.drawerHeaderTitle,
-                    style: TextStyle(color: Colors.white, fontSize: 18),
-                  ),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: Text(AppLocalizations.of(context)!.settings),
-              onTap: () {
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+          centerTitle: true,
+          title: Text(AppLocalizations.of(context)!.appTitle),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const SettingsPage()),
                 );
               },
             ),
-            ListTile(
-              leading: Icon(Icons.help),
-              title:
-                  Text(AppLocalizations.of(context)!.help, style: TextStyle()),
-              onTap: () {
-                showHelpDialog(context);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.info),
-              title:
-                  Text(AppLocalizations.of(context)!.about, style: TextStyle()),
-              onTap: () {
-                showAboutBuddhistCompassDialog(context);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.info),
-              title: Text(AppLocalizations.of(context)!.privacyPolicy),
-              onTap: () async {
-                const url =
-                    'https://americanmonk.org/privacy-policy-for-buddhist-compass-app/';
-                final uri = Uri.parse(url);
-                if (await canLaunchUrl(uri)) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                } else {
-                  // Optional: show an error if the URL cannot be opened
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text(
-                            AppLocalizations.of(context)!.privacyPolicyError)),
-                  );
-                }
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.star), // Added Icon
-              title: Text("Rate This App", style: TextStyle()),
-              focusColor: Theme.of(context).focusColor,
-              hoverColor: Theme.of(context).hoverColor,
-              onTap: () async {
-                await InAppReview.instance.openStoreListing(
-                  appStoreId: '6751797857', // use after iOS is live
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.share),
-              title: Text(AppLocalizations.of(context)!.shareApp),
-              onTap: () {
-                Navigator.pop(context); // close the drawer
-                shareApp(context);
-              },
-            ),
           ],
         ),
-      ),
-      body: SingleChildScrollView(
-        child: SafeArea(
-          top: true,
-          bottom: false,
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  (_isLoadingLocation || _isChangingLocation)
-                      ? _buildLoadingIndicator()
-                      : _buildCompass(),
-                  const SizedBox(height: 10),
-                  Text(
-                    AppLocalizations.of(context)!.currentDirection,
-                    style: TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    '${_direction.toInt()}°',
-                    style: const TextStyle(
-                        fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 15),
-                  Text(
-                    AppLocalizations.of(context)!
-                        .bearingTo(_targetDisplayName(context)),
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    '${_bearing.toInt()}°',
-                    style: const TextStyle(
-                        fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 15),
-                  Text(
-                    AppLocalizations.of(context)!
-                        .distanceTo(_targetDisplayName(context)),
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    '${_distance.toInt()} km',
-                    style: const TextStyle(
-                        fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 15),
-                  PlaceSelector(
-                    onLocationChanged: () {
-                      setState(() {
-                        _isChangingLocation = true;
-                      });
-                      _getLocation(context).then((_) {
+        drawer: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              DrawerHeader(
+                decoration: const BoxDecoration(color: Colors.blue),
+                child: Column(
+                  children: [
+                    Image.asset(
+                      'assets/images/compass_on_target.png',
+                      height: 80,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      AppLocalizations.of(context)!.drawerHeaderTitle,
+                      style: TextStyle(color: Colors.white, fontSize: 18),
+                    ),
+                  ],
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.settings),
+                title: Text(AppLocalizations.of(context)!.settings),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const SettingsPage()),
+                  );
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.help),
+                title: Text(AppLocalizations.of(context)!.help,
+                    style: TextStyle()),
+                onTap: () {
+                  showHelpDialog(context);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.info),
+                title: Text(AppLocalizations.of(context)!.about,
+                    style: TextStyle()),
+                onTap: () {
+                  showAboutBuddhistCompassDialog(context);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.privacy_tip), // Added Icon
+                title: Text(AppLocalizations.of(context)!.privacyPolicy),
+                onTap: () async {
+                  const url =
+                      'https://americanmonk.org/privacy-policy-for-buddhist-compass-app/';
+                  final uri = Uri.parse(url);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  } else {
+                    // Optional: show an error if the URL cannot be opened
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text(AppLocalizations.of(context)!
+                              .privacyPolicyError)),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.star), // Added Icon
+                title: Text(AppLocalizations.of(context)!.rateThisApp,
+                    style: TextStyle()),
+                focusColor: Theme.of(context).focusColor,
+                hoverColor: Theme.of(context).hoverColor,
+                onTap: () async {
+                  await InAppReview.instance.openStoreListing(
+                    appStoreId: '6751797857', // use after iOS is live
+                    //                  https://apps.apple.com/us/app/buddhist-compass/id6751797857
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.share),
+                title: Text(AppLocalizations.of(context)!.shareApp),
+                onTap: () {
+                  Navigator.pop(context); // close the drawer
+                  shareApp(context);
+                },
+              ),
+            ],
+          ),
+        ),
+        body: SingleChildScrollView(
+          child: SafeArea(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    (_isLoadingLocation || _isChangingLocation)
+                        ? _buildLoadingIndicator()
+                        : _buildCompass(),
+                    const SizedBox(height: 10),
+                    Text(
+                      AppLocalizations.of(context)!.currentDirection,
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '${_direction.toInt()}°',
+                      style: const TextStyle(
+                          fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 15),
+                    Text(
+                      AppLocalizations.of(context)!
+                          .bearingTo(_targetDisplayName(context)),
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '${_bearing.toInt()}°',
+                      style: const TextStyle(
+                          fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 15),
+                    Text(
+                      AppLocalizations.of(context)!
+                          .distanceTo(_targetDisplayName(context)),
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '${_distance.toInt()} km',
+                      style: const TextStyle(
+                          fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 15),
+                    PlaceSelector(
+                      onLocationChanged: () {
                         setState(() {
-                          _isChangingLocation = false;
+                          _isChangingLocation = true;
                         });
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 15),
-                  Text(AppLocalizations.of(context)!.vibration),
-                  Switch(
-                    value: _vibrationEnabled,
-                    onChanged: (value) async {
-                      setState(() {
-                        _vibrationEnabled = value;
-                        Prefs.vibeOn = value;
-                      });
-                      if (!value) {
-                        _pulseTimer?.cancel();
-                        _pulseTimer = null;
-                        await Vibration.cancel();
-                      }
-                    },
-                  ),
-                ],
+                        _getLocation(context).then((_) {
+                          setState(() {
+                            _isChangingLocation = false;
+                          });
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 15),
+                    Text(AppLocalizations.of(context)!.vibration),
+                    Switch(
+                      value: _vibrationEnabled,
+                      onChanged: (value) async {
+                        setState(() {
+                          _vibrationEnabled = value;
+                          Prefs.vibeOn = value;
+                        });
+                        if (!value) {
+                          _pulseTimer?.cancel();
+                          _pulseTimer = null;
+                          await Vibration.cancel();
+                        }
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -764,7 +775,7 @@ class _CompassPageState extends State<CompassPage>
   Future<void> shareApp(BuildContext context) async {
     final box = context.findRenderObject() as RenderBox?;
     const landingUrl =
-        'https://americanmonk.org/apps/buddhist-compass/?utm_source=app&utm_medium=share';
+        'https://americanmonk.org/buddhist-compass/?utm_source=app&utm_medium=share';
 
     await SharePlus.instance.share(
       ShareParams(

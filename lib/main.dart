@@ -33,8 +33,8 @@ class CompassApp extends StatelessWidget {
           title: 'Compass App',
           theme: ThemeData(
             primarySwatch: Colors.blue,
+            fontFamily: _fontForLocale(localeChange.localeString),
           ),
-          // Language wiring
           locale: Locale(localeChange.localeString, ''),
           localizationsDelegates: const [
             AppLocalizations.delegate,
@@ -51,5 +51,16 @@ class CompassApp extends StatelessWidget {
         );
       },
     );
+  }
+
+  String? _fontForLocale(String locale) {
+    switch (locale) {
+      case 'my':
+        return 'NotoSansMyanmar';
+      case 'si':
+        return 'NotoSansSinhala';
+      default:
+        return null; // system default
+    }
   }
 }

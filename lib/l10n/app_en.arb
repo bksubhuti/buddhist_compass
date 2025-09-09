@@ -34,7 +34,7 @@
   "locationServicesOpenSettings": "Open Settings",
   "locationError": "Unable to get location. Please try again.",
   "privacyPolicyError": "Could not launch Privacy Policy",
-  "shareAppText": "Buddhist Compass — find your direction:\nhttps://americanmonk.org/apps/buddhist-compass/?utm_source=app&utm_medium=share",
+  "shareAppText": "Buddhist Compass — find your direction:\nhttps://americanmonk.org/buddhist-compass",
   "shareAppSubject": "Buddhist Compass",
   "shareAppTitle": "Share Buddhist Compass",
   "language": "Select language",
@@ -42,5 +42,6 @@
   "place_bodhGaya": "Bodh Gaya",
   "place_shwedagonPagoda": "Shwedagon Pagoda",
   "place_mahaCetiya": "Maha Cetiya",
-  "place_select": "Select place"
+  "place_select": "Select place",
+  "rateThisApp": "Rate This App"
 }

@@ -34,7 +34,7 @@
   "locationServicesOpenSettings": "සැකසුම් විවෘත කරන්න",
   "locationError": "ස්ථානය ලබාගැනීමට නොහැක. කරුණාකර නැවත උත්සාහ කරන්න.",
   "privacyPolicyError": "පෞද්ගලිකත්ව ප්‍රතිපත්තිය විවෘත කළ නොහැක",
-  "shareAppText": "බුද්ධ දිශානතිය — ඔබේ දිශාව සොයන්න:\nhttps://americanmonk.org/apps/buddhist-compass/?utm_source=app&utm_medium=share",
+  "shareAppText": "බුද්ධ දිශානතිය — ඔබේ දිශාව සොයන්න:\nhttps://americanmonk.org/buddhist-compass",
   "shareAppSubject": "බුද්ධ දිශානතිය",
   "shareAppTitle": "බුද්ධ දිශානතිය බෙදාගන්න",
   "language": "භාෂාව තෝරන්න",
@@ -42,5 +42,6 @@
   "place_bodhGaya": "බෝධිගයා",
   "place_shwedagonPagoda": "ශ්වෙඩගෝන් පගොඩ",
   "place_mahaCetiya": "මහා සේය",
-  "place_select": "ස්ථානයක් තෝරන්න"
+  "place_select": "ස්ථානයක් තෝරන්න",
+  "rateThisApp": "මෙම යෙදුම ඇගයුම් කරන්න"
 }
