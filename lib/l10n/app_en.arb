@@ -39,9 +39,13 @@
   "shareAppTitle": "Share Buddhist Compass",
   "language": "Select language",
   "settings": "Settings",
+  "rateThisApp": "Rate This App",
   "place_bodhGaya": "Bodh Gaya",
   "place_shwedagonPagoda": "Shwedagon Pagoda",
-  "place_mahaCetiya": "Maha Cetiya",
   "place_select": "Select place",
-  "rateThisApp": "Rate This App"
+  "place_lumbiniPagoda": "Lumbini",
+  "place_sarnath": "Sarnath",
+  "place_kushinagar": "Kushinagar",
+  "place_mahaCetiya": "Ruwanwelisaya",
+  "place_toothRelicPagoda": "Temple of the Tooth"
 }

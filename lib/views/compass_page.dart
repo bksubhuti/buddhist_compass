@@ -48,15 +48,22 @@ class _CompassPageState extends State<CompassPage>
   String _targetDisplayName(BuildContext context) {
     final t = AppLocalizations.of(context)!;
     switch (Prefs.targetName) {
-      // Prefs.targetName should store the ID
       case 'bodhGaya':
         return t.place_bodhGaya;
+      case 'lumbiniPagoda':
+        return t.place_lumbiniPagoda;
+      case 'sarnath':
+        return t.place_sarnath;
+      case 'kushinagar':
+        return t.place_kushinagar;
       case 'shwedagonPagoda':
         return t.place_shwedagonPagoda;
       case 'mahaCetiya':
         return t.place_mahaCetiya;
+      case 'toothRelicPagoda':
+        return t.place_toothRelicPagoda;
       default:
-        return t.place_bodhGaya; // fallback
+        return Prefs.targetName; // Fallback to ID for unrecognized cases
     }
   }
 
@@ -512,7 +519,11 @@ class _CompassPageState extends State<CompassPage>
       child: Scaffold(
         appBar: AppBar(
           centerTitle: true,
-          title: Text(AppLocalizations.of(context)!.appTitle),
+          title: Text(
+            AppLocalizations.of(context)!.appTitle,
+            style: TextStyle(fontSize: 16), // Smaller font size
+            overflow: TextOverflow.ellipsis, // Prevents cutoff
+          ),
           actions: [
             IconButton(
               icon: const Icon(Icons.settings),

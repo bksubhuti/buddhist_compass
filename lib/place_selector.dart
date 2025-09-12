@@ -14,29 +14,51 @@ class PlaceSelector extends StatefulWidget {
 class _PlaceSelectorState extends State<PlaceSelector> {
   // Stable IDs -> coordinates
   final Map<String, Map<String, double>> _placeById = const {
-    'bodhGaya': {'latitude': 24.6967, 'longitude': 84.9918},
-    'shwedagonPagoda': {'latitude': 16.7983, 'longitude': 96.1498},
-    'mahaCetiya': {'latitude': 8.3499986, 'longitude': 80.391165102},
+    'bodhGaya': {'latitude': 24.6951, 'longitude': 84.9913}, // Bodh Gaya, India
+    'lumbiniPagoda': {
+      'latitude': 27.4697,
+      'longitude': 83.2752
+    }, // Lumbini, Nepal
+    'sarnath': {'latitude': 25.3811, 'longitude': 83.0214}, // Sarnath, India
+    'kushinagar': {
+      'latitude': 26.7407,
+      'longitude': 83.8886
+    }, // Kushinagar, India
+    'shwedagonPagoda': {
+      'latitude': 16.7984,
+      'longitude': 96.1495
+    }, // Shwedagon, Myanmar
+    'mahaCetiya': {
+      'latitude': 8.3500,
+      'longitude': 80.3964
+    }, // Ruwanwelisaya, Sri Lanka
+    'toothRelicPagoda': {
+      'latitude': 7.2936,
+      'longitude': 80.6413
+    }, // Sri Dalada Maligawa, Sri Lanka
   };
-
   // Read previously saved selection; migrate old value if it was a localized name
   late String _selectedId = _normalizeSavedTarget(Prefs.targetName);
 
   String _normalizeSavedTarget(String saved) {
-    // if already a known ID, use it
     if (_placeById.containsKey(saved)) return saved;
-
-    // migrate legacy human-readable names -> IDs
     switch (saved) {
       case 'Bodh Gaya':
         return 'bodhGaya';
+      case 'Lumbini Pagoda':
+        return 'lumbiniPagoda';
+      case 'Sarnath': // Updated from 'saranat'
+        return 'sarnath';
+      case 'kushinagar':
+        return 'kushinagar';
       case 'Swedagon Pagoda':
       case 'Shwedagon Pagoda':
         return 'shwedagonPagoda';
       case 'Maha Cetiya':
         return 'mahaCetiya';
+      case 'Tooth Relic Pagoda':
+        return 'toothRelicPagoda';
       default:
-        // fallback
         return 'bodhGaya';
     }
   }
@@ -46,10 +68,18 @@ class _PlaceSelectorState extends State<PlaceSelector> {
     switch (id) {
       case 'bodhGaya':
         return t.place_bodhGaya;
+      case 'lumbiniPagoda':
+        return t.place_lumbiniPagoda;
+      case 'sarnath':
+        return t.place_sarnath;
+      case 'kushinagar':
+        return t.place_kushinagar;
       case 'shwedagonPagoda':
         return t.place_shwedagonPagoda;
       case 'mahaCetiya':
         return t.place_mahaCetiya;
+      case 'toothRelicPagoda':
+        return t.place_toothRelicPagoda;
       default:
         return id;
     }
