@@ -2,7 +2,6 @@
 //import 'package:tipitaka_pali/services/prefs.dart';
 
 // Shared prefs package import
-
 import 'package:shared_preferences/shared_preferences.dart';
 
 // preference names
@@ -10,11 +9,17 @@ const String targetNamePref = "targetName";
 const String targetLatPref = "targetLat";
 const String targetLongPref = "targetLong";
 const String vibeOnPref = 'vibeOn';
+const String userDest1Pref = "userDest1";
+const String userDest1LatPref = "userDest1Lat";
+const String userDest1LongPref = "userDest1Long";
 
 const String defaultTargetName = "Bodh Gaya";
 const double defaultTargetLat = 24.6962;
 const double defaultTargetLong = 84.9901;
 const bool defaultVibeOn = false;
+const String defaultUserDest1 = "";
+const double defaultUserDest1Lat = 0.0;
+const double defaultUserDest1Long = 0.0;
 
 const String LOCALEVAL = "localeVal";
 const int DEFAULT_LOCALEVAL = 0;
@@ -32,6 +37,21 @@ class Prefs {
   static set targetName(String value) =>
       instance.setString(targetNamePref, value);
 
+  static String get userDest1 =>
+      instance.getString(userDest1Pref) ?? defaultUserDest1;
+  static set userDest1(String value) =>
+      instance.setString(userDest1Pref, value);
+
+  static double get userDest1Lat =>
+      instance.getDouble(userDest1LatPref) ?? defaultUserDest1Lat;
+  static set userDest1Lat(double value) =>
+      instance.setDouble(userDest1LatPref, value);
+
+  static double get userDest1Long =>
+      instance.getDouble(userDest1LongPref) ?? defaultUserDest1Long;
+  static set userDest1Long(double value) =>
+      instance.setDouble(userDest1LongPref, value);
+
   static double get targetLat =>
       instance.getDouble(targetLatPref) ?? defaultTargetLat;
   static set targetLat(double value) =>
@@ -47,21 +67,4 @@ class Prefs {
 
   static int get localeVal => instance.getInt(LOCALEVAL) ?? DEFAULT_LOCALEVAL;
   static set localeVal(int value) => instance.setInt(LOCALEVAL, value);
-
-  // ===========================================================================
-  // Helpers
-/*
-  static Color getChosenColor() {
-    switch (Prefs.selectedPageColor) {
-      case 0:
-        return Color(Colors.white.value);
-      case 1:
-        return const Color(seypia);
-      case 2:
-        return Color(Colors.black.value);
-      default:
-        return Color(Colors.white.value);
-    }
-  }
-  */
 }

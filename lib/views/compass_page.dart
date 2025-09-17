@@ -44,6 +44,7 @@ class _CompassPageState extends State<CompassPage>
   final _minVibeGap = const Duration(milliseconds: 300);
   bool _askedThisSession = false; // prevents repeat prompts
   bool _showingDialog = false; // avoids stacking dialogs
+  late Key _placeSelectorKey = UniqueKey();
 
   String _targetDisplayName(BuildContext context) {
     final t = AppLocalizations.of(context)!;
@@ -62,6 +63,8 @@ class _CompassPageState extends State<CompassPage>
         return t.place_mahaCetiya;
       case 'toothRelicPagoda':
         return t.place_toothRelicPagoda;
+      case 'userDest1':
+        return Prefs.userDest1;
       default:
         return Prefs.targetName; // Fallback to ID for unrecognized cases
     }
@@ -531,7 +534,11 @@ class _CompassPageState extends State<CompassPage>
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const SettingsPage()),
-                );
+                ).then((_) {
+                  setState(() {
+                    _placeSelectorKey = UniqueKey();
+                  });
+                });
               },
             ),
           ],
@@ -557,16 +564,19 @@ class _CompassPageState extends State<CompassPage>
                 ),
               ),
               ListTile(
-                leading: const Icon(Icons.settings),
-                title: Text(AppLocalizations.of(context)!.settings),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const SettingsPage()),
-                  );
-                },
-              ),
+                  leading: const Icon(Icons.settings),
+                  title: Text(AppLocalizations.of(context)!.settings),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const SettingsPage()),
+                    ).then((_) {
+                      setState(() {
+                        _placeSelectorKey = UniqueKey();
+                      });
+                    });
+                  }),
               ListTile(
                 leading: Icon(Icons.help),
                 title: Text(AppLocalizations.of(context)!.help,
@@ -675,6 +685,7 @@ class _CompassPageState extends State<CompassPage>
                     ),
                     const SizedBox(height: 15),
                     PlaceSelector(
+                      key: _placeSelectorKey,
                       onLocationChanged: () {
                         setState(() {
                           _isChangingLocation = true;

@@ -16,6 +16,14 @@ class LocaleChangeNotifier extends ChangeNotifier {
       case 2:
         localeString = "si";
         break;
+      case 3:
+        localeString = "km";
+        break;
+      case 4:
+        localeString = "hi";
+        break;
+      default:
+        localeString = "en";
     }
 
     return localeString;

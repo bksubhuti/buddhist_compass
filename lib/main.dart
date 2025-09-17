@@ -46,6 +46,8 @@ class CompassApp extends StatelessWidget {
             Locale('en', ''), // English
             Locale('si', ''), // Sinhala
             Locale('my', ''), // Myanmar (Burmese)
+            Locale('km', ''), // Khmer
+            Locale('hi', ''), // Hindi
           ],
           home: const CompassPage(),
         );

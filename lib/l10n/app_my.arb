@@ -41,11 +41,16 @@
   "settings": "ဆက်တင်များ",
   "rateThisApp": "အက်ပ်ကို အဆင့်သတ်မှတ်ပါ",
   "place_bodhGaya": "ဗုဒ္ဓဂါယာ",
-  "place_shwedagonPagoda": "ရွှေ တိဂုံစေတီတော်",
+  "place_shwedagonPagoda": "ရွှေတိဂုံစေတီတော်",
   "place_select": "နေရာကိုရွေးပါ",
   "place_lumbiniPagoda": "လုမ္ဗိနီ",
   "place_sarnath": "သာရနတ်",
   "place_kushinagar": "ကုသိနာရုံ",
   "place_mahaCetiya": "မဟာစေတီ",
-  "place_toothRelicPagoda": "စွယ်တော်စေတီ"
+  "place_toothRelicPagoda": "စွယ်တော်စေတီ",
+  "latitude": "လတ္တီကျူဒ်",
+  "longitude": "လောင်ဂျီကျူဒ်",
+  "locationName": "တည်နေရာအမည်",
+  "save": "သိမ်းဆည်းမည်",
+  "clear": "ရှင်းလင်းမည်"
 }

@@ -47,5 +47,10 @@
   "place_sarnath": "සාරනාත්",
   "place_kushinagar": "කුසිනාරා",
   "place_mahaCetiya": "රුවන්වැලිසැය",
-  "place_toothRelicPagoda": "දළදා මාළිගාව"
+  "place_toothRelicPagoda": "දළදා මාළිගාව",
+  "latitude": "අක්ෂාංශ",
+  "longitude": "දේශාංශ",
+  "locationName": "ස්ථානයේ නාමය",
+  "save": "සුරකින්න",
+  "clear": "මකන්න"
 }

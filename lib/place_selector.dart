@@ -13,7 +13,7 @@ class PlaceSelector extends StatefulWidget {
 
 class _PlaceSelectorState extends State<PlaceSelector> {
   // Stable IDs -> coordinates
-  final Map<String, Map<String, double>> _placeById = const {
+  final Map<String, Map<String, double>> _placeById = {
     'bodhGaya': {'latitude': 24.6951, 'longitude': 84.9913}, // Bodh Gaya, India
     'lumbiniPagoda': {
       'latitude': 27.4697,
@@ -38,7 +38,22 @@ class _PlaceSelectorState extends State<PlaceSelector> {
     }, // Sri Dalada Maligawa, Sri Lanka
   };
   // Read previously saved selection; migrate old value if it was a localized name
-  late String _selectedId = _normalizeSavedTarget(Prefs.targetName);
+  late String _selectedId;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Rebuild the map fresh every time PlaceSelector is constructed
+    if (Prefs.userDest1.isNotEmpty) {
+      _placeById['userDest1'] = {
+        'latitude': Prefs.userDest1Lat,
+        'longitude': Prefs.userDest1Long,
+      };
+    }
+
+    _selectedId = _normalizeSavedTarget(Prefs.targetName);
+  }
 
   String _normalizeSavedTarget(String saved) {
     if (_placeById.containsKey(saved)) return saved;
@@ -80,6 +95,8 @@ class _PlaceSelectorState extends State<PlaceSelector> {
         return t.place_mahaCetiya;
       case 'toothRelicPagoda':
         return t.place_toothRelicPagoda;
+      case 'userDest1':
+        return Prefs.userDest1; // <- custom label
       default:
         return id;
     }

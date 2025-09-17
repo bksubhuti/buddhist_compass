@@ -47,5 +47,10 @@
   "place_sarnath": "Sarnath",
   "place_kushinagar": "Kushinagar",
   "place_mahaCetiya": "Ruwanwelisaya",
-  "place_toothRelicPagoda": "Temple of the Tooth"
+  "place_toothRelicPagoda": "Temple of the Tooth",
+  "latitude" : "Latitude",
+  "longitude" : "Logiitude",
+  "locationName": "Location Name",
+  "save":"save",
+  "clear":"clear"
 }
