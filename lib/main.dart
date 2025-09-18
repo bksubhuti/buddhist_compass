@@ -61,6 +61,8 @@ class CompassApp extends StatelessWidget {
         return 'NotoSansMyanmar';
       case 'si':
         return 'NotoSansSinhala';
+      case 'km':
+        return 'NotoSansKhmer';
       default:
         return null; // system default
     }
